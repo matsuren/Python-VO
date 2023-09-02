@@ -33,7 +33,7 @@ class VisualOdometry(object):
         self.cur_R = None
         self.cur_t = None
 
-    def update(self, image, absolute_scale=1.0):
+    def update(self, image, absolute_scale=1.0, mark_inlier=True):
         """
         update a new image to visual odometry, and compute the pose
         :param image: input image
@@ -50,6 +50,7 @@ class VisualOdometry(object):
             # start point
             self.cur_R = np.identity(3)
             self.cur_t = np.zeros((3, 1))
+            num_inliers = 0
         else:
             # update keypoints and descriptors
             self.kptdescs["cur"] = kptdesc
@@ -62,17 +63,32 @@ class VisualOdometry(object):
                                            focal=self.focal, pp=self.pp,
                                            method=cv2.RANSAC, prob=0.999, threshold=1.0)
             _, R, t, mask = cv2.recoverPose(E, matches['cur_keypoints'], matches['ref_keypoints'],
-                                            focal=self.focal, pp=self.pp)
+                                            focal=self.focal, pp=self.pp, mask=mask)
+            if mark_inlier:
+                # Get inlier keypoints
+                inlier_keypoints_cur = matches["cur_keypoints"][mask.ravel() == 1]
+
+                # Define a color for drawing the keypoints
+                keypoint_color = (240, 240, 0)
+
+                # Draw inlier keypoints individually
+                radius = 5
+                thickness = 1
+                for x, y in inlier_keypoints_cur:
+                    cv2.circle(image, (int(x), int(y)), radius, keypoint_color, thickness)
 
             # get absolute pose based on absolute_scale
             if (absolute_scale > 0.1):
                 self.cur_t = self.cur_t + absolute_scale * self.cur_R.dot(t)
                 self.cur_R = R.dot(self.cur_R)
 
+            # number of inliers
+            num_inliers = mask.sum()
+
         self.kptdescs["ref"] = self.kptdescs["cur"]
 
         self.index += 1
-        return self.cur_R, self.cur_t
+        return self.cur_R, self.cur_t, num_inliers
 
 
 class AbosluteScaleComputer(object):

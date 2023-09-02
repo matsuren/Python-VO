@@ -28,7 +28,7 @@ class TrajPlotter(object):
         self.traj = np.zeros((600, 600, 3), dtype=np.uint8)
         pass
 
-    def update(self, est_xyz, gt_xyz, fps):
+    def update(self, est_xyz, gt_xyz, fps, num_inliers):
         x, z = est_xyz[0], est_xyz[2]
         gt_x, gt_z = gt_xyz[0], gt_xyz[2]
 
@@ -52,7 +52,9 @@ class TrajPlotter(object):
         cv2.rectangle(self.traj, (10, 20), (600, 80), (0, 0, 0), -1)
 
         # draw text
-        text = "[AvgError] %2.4fm [FPS] %3.2f" % (avg_error, fps)
+        num_in = num_inliers[-1]
+        num_in_avg = sum(num_inliers) / len(num_inliers)
+        text = "[AvgError] %2.4fm [FPS] %3.2f [inliers/avg] %d/%3.1f" % (avg_error, fps, num_in, num_in_avg)
         cv2.putText(self.traj, text, (20, 40),
                     cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1, 8)
 
@@ -82,9 +84,11 @@ def run(args):
     vo = VisualOdometry(detector, matcher, loader.cam)
 
     start_time = time.time()
+    num_inliers = []
     for i, img in enumerate(loader):
         gt_pose = loader.get_cur_pose()
-        R, t = vo.update(img, absscale.update(gt_pose))
+        R, t, num_in = vo.update(img, absscale.update(gt_pose))
+        num_inliers.append(num_in)
 
         # === log writer ==============================
         print(i, t[0, 0], t[1, 0], t[2, 0], gt_pose[0, 3], gt_pose[1, 3], gt_pose[2, 3], file=log_fopen)
@@ -95,7 +99,7 @@ def run(args):
         fps = (i+1)/elapsed
         # === drawer ==================================
         img1 = keypoints_plot(img, vo)
-        img2 = traj_plotter.update(t, gt_pose[:, 3], fps=fps)
+        img2 = traj_plotter.update(t, gt_pose[:, 3], fps=fps, num_inliers=num_inliers)
 
         cv2.imshow("keypoints", img1)
         cv2.imshow("trajectory", img2)
