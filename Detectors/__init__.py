@@ -1,5 +1,6 @@
 from .HandcraftDetector import HandcraftDetector
 from .SuperPointDetector import SuperPointDetector
+from .AlikeDetector import AlikeDetector
 
 
 def create_detector(conf):

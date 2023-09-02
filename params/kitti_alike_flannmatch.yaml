@@ -1,0 +1,21 @@
+dataset:
+  name: KITTILoader
+#  root_path: /mnt/dataset_hdd/KITTI/odometry
+  root_path: test_imgs
+  sequence: '00'
+  start: 0
+
+detector:
+  name: AlikeDetector
+  model: alike-t
+  scores_th: 0.2
+  n_limit: 1000
+  cuda: 1
+
+matcher:
+  name: FrameByFrameMatcher
+  type: FLANN
+  FLANN:
+    kdTrees: 5
+    searchChecks: 50
+  distance_ratio: 0.75
